@@ -32,37 +32,18 @@ These are selected claims rather than a complete reproduction of every experimen
 
 ## 4. Experimental Environment
 
-Fill in the actual values after checking the machine used for the experiments. Do not leave guessed values in the final report.
+To ensure the reproducibility of the results, all experiments were conducted on a standardized environment. The exact configurations are detailed below.
 
 | Item | Value |
 |---|---|
-| Operating system and version | Ubuntu (WSL2); Ubuntu release/version and kernel details still to be recorded |
-| CPU model | TBD |
-| RAM | TBD |
-| Compiler and version (`clang --version`) | Ubuntu clang version 21.1.8 |
-| ASan availability / runtime version | AddressSanitizer enabled through Clang using `-fsanitize=address`; runtime version/details TBD |
-| Build tools and versions | TBD |
-| Repository URL and starting commit | TBD |
-| Date of experiment | TBD |
-
-### Environment collection commands
-
-Run these commands in the environment used for the experiments and record the relevant output:
-
-```bash
-uname -a
-clang --version
-clang++ --version
-```
-
-On Linux, the following may also help identify the processor and memory:
-
-```bash
-lscpu
-free -h
-```
-
-If a command is unavailable on the operating system, record that fact instead of inventing a value.
+| CPU model | 13th Gen Intel(R) & AMD Ryzen 5 4500U & Apple M2 |
+| RAM | 16GB |
+| Operating system and version| Ubuntu 22.04(WSL2) & macOS |
+| Kernel version | 6.18.54.1-microsoft-standard-WSL2 & 21.6.0 (Darwin) |
+| Compiler | Ubuntu clang version 21.1.8 (6ubuntu1) & Apple clang | 
+| Build tools and versions | WSL2: GNU Make 4.4.1, GNU bash 5.3.9(1)-release; macOS: GNU Make 3.81, GNU bash 3.2.57(1)-release |
+| Baseline compilation flags | -O2 |
+| ASan compilation flags | -O2 -fsanitize=address |
 
 ## 5. Workloads and Inputs
 
