@@ -1,0 +1,28 @@
+===== Boundary Run 3 =====
+=================================================================
+==846==ERROR: AddressSanitizer: attempting double-free on 0x777a9ebe0030 in thread T0:
+==846==WARNING: invalid path to external symbolizer!
+==846==WARNING: Failed to use and restart external symbolizer!
+    #0 0x5d794432666a  (/home/yuanxinyi/paper8/experiments/boundary_demo+0xd166a) (BuildId: 60ff6ce7ff7cbba6822162c115d8ad1d0bbacc22)
+    #1 0x5d794436aaf4  (/home/yuanxinyi/paper8/experiments/boundary_demo+0x115af4) (BuildId: 60ff6ce7ff7cbba6822162c115d8ad1d0bbacc22)
+    #2 0x7b5a9f82a600  (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a600) (BuildId: 066527e430a32768d82741e00b81eebb1a872294)
+    #3 0x7b5a9f82a717  (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a717) (BuildId: 066527e430a32768d82741e00b81eebb1a872294)
+    #4 0x5d7944281364  (/home/yuanxinyi/paper8/experiments/boundary_demo+0x2c364) (BuildId: 60ff6ce7ff7cbba6822162c115d8ad1d0bbacc22)
+
+0x777a9ebe0030 is located 0 bytes inside of 4-byte region [0x777a9ebe0030,0x777a9ebe0034)
+freed by thread T0 here:
+    #0 0x5d794432666a  (/home/yuanxinyi/paper8/experiments/boundary_demo+0xd166a) (BuildId: 60ff6ce7ff7cbba6822162c115d8ad1d0bbacc22)
+    #1 0x5d794436aaeb  (/home/yuanxinyi/paper8/experiments/boundary_demo+0x115aeb) (BuildId: 60ff6ce7ff7cbba6822162c115d8ad1d0bbacc22)
+    #2 0x7b5a9f82a600  (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a600) (BuildId: 066527e430a32768d82741e00b81eebb1a872294)
+    #3 0x7b5a9f82a717  (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a717) (BuildId: 066527e430a32768d82741e00b81eebb1a872294)
+    #4 0x5d7944281364  (/home/yuanxinyi/paper8/experiments/boundary_demo+0x2c364) (BuildId: 60ff6ce7ff7cbba6822162c115d8ad1d0bbacc22)
+
+previously allocated by thread T0 here:
+    #0 0x5d7944326908  (/home/yuanxinyi/paper8/experiments/boundary_demo+0xd1908) (BuildId: 60ff6ce7ff7cbba6822162c115d8ad1d0bbacc22)
+    #1 0x5d794436aade  (/home/yuanxinyi/paper8/experiments/boundary_demo+0x115ade) (BuildId: 60ff6ce7ff7cbba6822162c115d8ad1d0bbacc22)
+    #2 0x7b5a9f82a600  (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a600) (BuildId: 066527e430a32768d82741e00b81eebb1a872294)
+    #3 0x7b5a9f82a717  (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a717) (BuildId: 066527e430a32768d82741e00b81eebb1a872294)
+    #4 0x5d7944281364  (/home/yuanxinyi/paper8/experiments/boundary_demo+0x2c364) (BuildId: 60ff6ce7ff7cbba6822162c115d8ad1d0bbacc22)
+
+SUMMARY: AddressSanitizer: double-free (/home/yuanxinyi/paper8/experiments/boundary_demo+0xd166a) (BuildId: 60ff6ce7ff7cbba6822162c115d8ad1d0bbacc22) 
+==846==ABORTING
