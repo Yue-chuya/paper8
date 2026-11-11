@@ -17,3 +17,21 @@
 ## Logs
 - baseline.log (latest automated run)
 - asan.log (latest automated run)
+
+11.9-11.15 update
+
+## Final Results (3 Runs)
+
+### Baseline (ASan OFF)
+- Runs: 1.298579, 1.285835, 1.320533
+- Mean: 1.3016 s
+- Standard Deviation (Std): 0.0146 s
+
+### ASan (ASan ON)
+- Runs: 2.330606, 2.329792, 2.442241
+- Mean: 2.3675 s
+- Standard Deviation (Std): 0.0526 s
+
+### Final Slowdown Comparison
+- Calculated Slowdown: 2.3675 / 1.3016 ≈ **1.82x** 
+- (Paper reports ~1.73x, confirming a highly consistent trend)
