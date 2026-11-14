@@ -1,0 +1,19 @@
+=================================================================
+==4757==ERROR: AddressSanitizer: attempting double-free on 0x000105200750 in thread T0:
+    #0 0x103456de4 in wrap_free+0x98 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3ede4)
+    #1 0x102d33f54 in main exp_double_free.c:7
+    #2 0x103039088 in start+0x204 (dyld:arm64e+0x5088)
+
+0x000105200750 is located 0 bytes inside of 4-byte region [0x000105200750,0x000105200754)
+freed by thread T0 here:
+    #0 0x103456de4 in wrap_free+0x98 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3ede4)
+    #1 0x102d33f3c in main exp_double_free.c:5
+    #2 0x103039088 in start+0x204 (dyld:arm64e+0x5088)
+
+previously allocated by thread T0 here:
+    #0 0x103456ca8 in wrap_malloc+0x94 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3eca8)
+    #1 0x102d33f30 in main exp_double_free.c:4
+    #2 0x103039088 in start+0x204 (dyld:arm64e+0x5088)
+
+SUMMARY: AddressSanitizer: double-free (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3ede4) in wrap_free+0x98
+==4757==ABORTING

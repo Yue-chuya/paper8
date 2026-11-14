@@ -271,3 +271,7 @@ It establishes whether the ASan overhead we measure is sensitive to compiler opt
 Serebryany, K., Bruening, D., Potapenko, A., & Vyukov, D. (2012). *AddressSanitizer: A Fast Address Sanity Checker*. Proceedings of the 2012 USENIX Annual Technical Conference (USENIX ATC '12).
 
 PolyBench/C 4.2.1 — Pouchet, L.-N. *PolyBench: The Polyhedral Benchmark Suite* (version 4.2.1), GEMM kernel.
+
+
+## Compiler Optimization vs. Bug Detection:
+During our functional tests, we discovered that compiling with -O1 or higher on Apple Clang 14 aggressively eliminated our out-of-bounds and double-free test cases via dead code elimination (DCE). This aligns with the conflict between compiler optimizations and ASan instrumentation described in the original paper (Section 3.6.1). To ensure bugs are faithfully executed, we compiled our functional test cases at -O0. However, our performance benchmark (gemm.c) remains at -O2 to match the paper's evaluation settings, demonstrating a necessary separation between functional validation and performance measurement.

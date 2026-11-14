@@ -1,0 +1,50 @@
+=================================================================
+==4744==ERROR: AddressSanitizer: heap-use-after-free on address 0x000104600750 at pc 0x0001020bbe44 bp 0x00016dd47730 sp 0x00016dd47728
+READ of size 4 at 0x000104600750 thread T0
+    #0 0x1020bbe40 in main minimal_demo.c:8
+    #1 0x1021fd088 in start+0x204 (dyld:arm64e+0x5088)
+
+0x000104600750 is located 0 bytes inside of 4-byte region [0x000104600750,0x000104600754)
+freed by thread T0 here:
+    #0 0x10261ade4 in wrap_free+0x98 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3ede4)
+    #1 0x1020bbdf4 in main minimal_demo.c:7
+    #2 0x1021fd088 in start+0x204 (dyld:arm64e+0x5088)
+
+previously allocated by thread T0 here:
+    #0 0x10261aca8 in wrap_malloc+0x94 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3eca8)
+    #1 0x1020bbd8c in main minimal_demo.c:5
+    #2 0x1021fd088 in start+0x204 (dyld:arm64e+0x5088)
+
+SUMMARY: AddressSanitizer: heap-use-after-free minimal_demo.c:8 in main
+Shadow bytes around the buggy address:
+  0x0070208e0090: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0070208e00a0: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0070208e00b0: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0070208e00c0: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0070208e00d0: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+=>0x0070208e00e0: fa fa fa fa fa fa fa fa fa fa[fd]fa fa fa 00 04
+  0x0070208e00f0: fa fa 00 00 fa fa fd fd fa fa fa fa fa fa fa fa
+  0x0070208e0100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0070208e0110: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0070208e0120: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x0070208e0130: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==4744==ABORTING

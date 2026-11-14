@@ -1,4 +1,13 @@
 experiments/demo_asan
+demo_baseline
+demo_asan
+boundary_demo
+minimal_demo
+exp_oob
+exp_double_free
+exp_malloc_zero
 *.o
+*.dsYM
 *.core
 core.*
+.DS_Store

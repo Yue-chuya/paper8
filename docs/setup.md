@@ -43,7 +43,8 @@ To ensure the reproducibility of the results, all experiments were conducted on 
 | Compiler | Ubuntu clang version 21.1.8 (6ubuntu1) & Apple clang | 
 | Build tools and versions | WSL2: GNU Make 4.4.1, GNU bash 5.3.9(1)-release; macOS: GNU Make 3.81, GNU bash 3.2.57(1)-release |
 | Baseline compilation flags | -O2 |
-| ASan compilation flags | -O2 -fsanitize=address |
+| ASan compilation flags (Performance benchmark)| -O2 -fsanitize=address |
+| ASan compilation flags (Bug detection tests)| -O0 -fsanitize=address |
 
 ## 5. Workloads and Inputs
 
