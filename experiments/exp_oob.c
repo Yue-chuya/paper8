@@ -11,14 +11,3 @@ int main() {
 
 
 
-//#include <stdlib.h>
-//#include <stdio.h>
-//volatile int sink;
-//int main() {
-//    char *buf = malloc(1);
-//    buf[1] = 'B'; 
-//    sink = buf[1]; 
-//    printf("Sink: %d\n", sink);
-//    free(buf);
-//    return 0;
-//}

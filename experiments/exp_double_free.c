@@ -13,10 +13,3 @@ int main(int argc, char **argv) {
 
 
 
-//#include <stdlib.h>
-//int main() {
-//    int *p = malloc(sizeof(int));
-//    free(p);
-//    free(p); 
-//    return 0;
-//}

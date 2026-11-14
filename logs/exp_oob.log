@@ -1,28 +1,28 @@
 =================================================================
-==4750==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x000107500c78 at pc 0x000104d77f38 bp 0x00016b08b760 sp 0x00016b08b758
-WRITE of size 4 at 0x000107500c78 thread T0
-    #0 0x104d77f34 in main exp_oob.c:5
-    #1 0x1050e5088 in start+0x204 (dyld:arm64e+0x5088)
+==7729==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x000104a00c78 at pc 0x0001023fff38 bp 0x00016da03770 sp 0x00016da03768
+WRITE of size 4 at 0x000104a00c78 thread T0
+    #0 0x1023fff34 in main exp_oob.c:5
+    #1 0x1024d9088 in start+0x204 (dyld:arm64e+0x5088)
 
-0x000107500c78 is located 0 bytes to the right of 40-byte region [0x000107500c50,0x000107500c78)
+0x000104a00c78 is located 0 bytes to the right of 40-byte region [0x000104a00c50,0x000104a00c78)
 allocated by thread T0 here:
-    #0 0x105502ca8 in wrap_malloc+0x94 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3eca8)
-    #1 0x104d77ee0 in main exp_oob.c:4
-    #2 0x1050e5088 in start+0x204 (dyld:arm64e+0x5088)
+    #0 0x1029f6ca8 in wrap_malloc+0x94 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3eca8)
+    #1 0x1023ffee0 in main exp_oob.c:4
+    #2 0x1024d9088 in start+0x204 (dyld:arm64e+0x5088)
 
 SUMMARY: AddressSanitizer: heap-buffer-overflow exp_oob.c:5 in main
 Shadow bytes around the buggy address:
-  0x007020ec0130: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x007020ec0140: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x007020ec0150: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x007020ec0160: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x007020ec0170: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-=>0x007020ec0180: fa fa fa fa fa fa fa fa fa fa 00 00 00 00 00[fa]
-  0x007020ec0190: fa fa 00 00 00 00 00 05 fa fa 00 00 00 00 00 00
-  0x007020ec01a0: fa fa 00 00 00 00 00 00 fa fa 00 00 00 00 00 07
-  0x007020ec01b0: fa fa 00 00 00 00 00 00 fa fa 00 00 00 00 00 05
-  0x007020ec01c0: fa fa 00 00 00 00 00 00 fa fa 00 00 00 00 00 05
-  0x007020ec01d0: fa fa 00 00 00 00 00 00 fa fa 00 00 00 00 00 00
+  0x007020960130: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x007020960140: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x007020960150: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x007020960160: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x007020960170: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+=>0x007020960180: fa fa fa fa fa fa fa fa fa fa 00 00 00 00 00[fa]
+  0x007020960190: fa fa 00 00 00 00 00 05 fa fa 00 00 00 00 00 00
+  0x0070209601a0: fa fa 00 00 00 00 00 00 fa fa 00 00 00 00 00 07
+  0x0070209601b0: fa fa 00 00 00 00 00 00 fa fa 00 00 00 00 00 05
+  0x0070209601c0: fa fa 00 00 00 00 00 00 fa fa 00 00 00 00 00 05
+  0x0070209601d0: fa fa 00 00 00 00 00 00 fa fa 00 00 00 00 00 00
 Shadow byte legend (one shadow byte represents 8 application bytes):
   Addressable:           00
   Partially addressable: 01 02 03 04 05 06 07 
@@ -42,4 +42,4 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
   ASan internal:           fe
   Left alloca redzone:     ca
   Right alloca redzone:    cb
-==4750==ABORTING
+==7729==ABORTING

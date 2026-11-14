@@ -6,6 +6,8 @@ minimal_demo
 exp_oob
 exp_double_free
 exp_malloc_zero
+exp_stack
+exp_global
 *.o
 *.dsYM
 *.core

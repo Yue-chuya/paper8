@@ -6,7 +6,7 @@ LOG_DIR="logs"
 
 mkdir -p "$LOG_DIR"
 
-declare -a tests=("minimal_demo" "exp_oob" "exp_double_free" "exp_malloc_zero")
+declare -a tests=("minimal_demo" "exp_oob" "exp_double_free" "exp_malloc_zero" "exp_stack" "exp_global")
 
 echo "=== Running ASan Bug Detection Tests (-O0) ==="
 set +e
