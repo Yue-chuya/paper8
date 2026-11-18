@@ -1,20 +1,12 @@
-# Extension Experiment
-Student ID:1240028451, Name: Yuan Xinyi
+# Extension Experiment Design
+Student ID: 1240028451
+Name: Yuan Xinyi
 
-## Question
-> Describe the new test condition and motivation. Explain how it relates to the original paper’s claims.
+Single variable modification: learning rate
+Baseline: lr = 1e-3
+Modified: lr = 5e-4
 
-## Design (single factor only; keep all other settings unchanged)
-- Baseline setting (identical to our reproduction setup):
-- Changed single factor:
-- Keep unchanged: hardware, OS/kernel version, compiler, benchmark/workload, all other configurations
+All other experimental settings are exactly the same as the reproduction baseline:
+same model, batch size, epochs, optimizer, random seed, dataset, loss function and evaluation metrics.
 
-## Result
-Run 1 log: ../logs/run1.log
-Run 2 log: ../logs/run2.log
-Run 3 log: ../logs/run3.log
-
-Metrics: mean ± std = ?
-
-## Interpretation
-Explain the extension result and compare it against the original paper’s claim.
+Goal: Compare the model performance and convergence curve between baseline lr and smaller lr.
