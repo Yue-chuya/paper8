@@ -2,10 +2,9 @@
 Student ID: 1240028451
 Name: Yuan Xinyi
 
-Single modified factor: learning rate
-Baseline setting: lr = 1e-3
-Modified setting: lr = 5e-4
-All other hyperparameters, model code, dataset and training pipeline remain unchanged.
+Single modified factor: heap red‑zone size
+Baseline setting: heap redzone size = 128 bytes (AddressSanitizer default)
+Modified setting: heap redzone size = 32 bytes
+All other configurations remain unchanged: quarantine size(256MB), stack unwinding depth(30), compiler, benchmark workload, OS and hardware.
 
-Goal: Compare model convergence behavior and final performance between the two learning rates.
-
+Goal: Compare memory overhead, binary performance slowdown and bug‑detection capability between default redzone(128B) and smaller redzone(32B).
