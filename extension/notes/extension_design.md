@@ -8,3 +8,4 @@ Modified setting: lr = 5e-4
 All other hyperparameters, model code, dataset and training pipeline remain unchanged.
 
 Goal: Compare model convergence behavior and final performance between the two learning rates.
+
