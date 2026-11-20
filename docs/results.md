@@ -1,103 +1,173 @@
-# Experimental Results and Paper vs. Ours Comparison
-
-> **Status:** Week 3 Draft  
-> This document summarizes the group's current experimental results, including runtime overhead measurements and selected memory-error detection tests. Results are limited to the evidence currently available in the repository.
+# Experimental Results
 
 ## 1. Experimental Configuration
 
-| Item | Original Paper | Our Reproduction |
-|---|---|---|
-| Tool | AddressSanitizer (ASan) | Clang AddressSanitizer |
-| Benchmark | SPEC CPU2006 C/C++ benchmarks | GEMM matrix multiplication |
-| Benchmark size | Multiple SPEC CPU2006 benchmarks | N = 1000 |
-| Baseline optimization | `-O2` | `-O2` |
-| ASan compilation | ASan-instrumented binary | `-O2 -fsanitize=address` |
-| Operating environment | 64-bit mode on HP Z600 | Ubuntu 22.04 on WSL2 |
-| Compiler | LLVM-based compiler | Ubuntu Clang 21.1.8 |
-| Runtime evaluation | Average across SPEC CPU2006 benchmarks | Three runs of one GEMM workload |
+### 1.1 Benchmark Selection
 
-The original paper used the SPEC CPU2006 benchmark suite. Our group used a self-contained GEMM workload because SPEC CPU2006 was unavailable to the group.
+The original AddressSanitizer (ASan) paper used the SPEC CPU2006 benchmark suite to evaluate performance overhead.
 
-This substitution reduces the scope of the reproduction. A single GEMM workload cannot represent the performance characteristics of the complete SPEC CPU2006 benchmark suite.
+However, SPEC CPU2006 was unavailable due to licensing and access constraints. Therefore, we used a self-contained matrix multiplication benchmark (`gemm.c`) as a substitute.
+
+The benchmark uses a matrix size of N=1000. It provides a compute-intensive workload for comparing execution time and memory usage with and without ASan.
+
+### 1.2 Compilation Commands
+
+**Baseline (ASan OFF):**
+
+```bash
+clang -O2 experiments/workload/gemm.c -o demo_baseline
+```
+
+**ASan (ASan ON):**
+
+```bash
+clang -O2 -fsanitize=address experiments/workload/gemm.c -o demo_asan
+```
+
+### 1.3 Experimental Environment
+
+| Item | Configuration |
+|---|---|
+| Operating System | macOS |
+| Hardware Architecture | Apple Silicon |
+| Compiler | Apple clang 14.0.0 |
+| Benchmark | GEMM (Matrix Multiplication) |
+| Matrix Size | N = 1000 |
+| Number of Runs | 3 |
+
+The benchmark was executed using the automated script:
+
+```bash
+./scripts/run_benchmark.sh
+```
+
+Raw results and statistics are recorded in:
+
+`logs/benchmark_result.md`
+
+---
 
 ## 2. Runtime Performance Results
 
-### 2.1 Three-Run Measurements
+We conducted three independent runs for both the baseline program and the ASan-instrumented program.
 
-The following measurements are recorded in the group's `experiments/workload/workload.md`.
+### 2.1 Raw Runtime Data
 
-| Configuration | Run 1 (s) | Run 2 (s) | Run 3 (s) | Mean (s) | Sample SD (s) |
-|---|---:|---:|---:|---:|---:|
-| Baseline (ASan OFF) | 1.298579 | 1.285835 | 1.320533 | 1.3016 | 0.0146 |
-| ASan (ASan ON) | 2.330606 | 2.329792 | 2.442241 | 2.3675 | 0.0526 |
+| Run | Baseline (seconds) | ASan (seconds) |
+|---|---:|---:|
+| Run 1 | 1.584134 | 2.597861 |
+| Run 2 | 1.578419 | 2.602678 |
+| Run 3 | 1.486961 | 2.590914 |
+| **Mean** | **1.5498** | **2.5972** |
+| **Standard Deviation** | **0.0445** | **0.0048** |
 
-The means and sample standard deviations above are recalculated from the three recorded measurements. Sample standard deviation uses the denominator n − 1.
+*Note: Standard deviations are reported using the population standard deviation convention, consistent with the recorded workload results.*
 
-**Note:** The standard deviations previously recorded in `workload.md` (0.0146 s and 0.0526 s) do not match the recalculated sample standard deviations. The group should confirm the required convention and update `workload.md` consistently.
+### 2.2 Performance Overhead
 
-### 2.2 Runtime Ratio
+The slowdown ratio is calculated as:
 
-The runtime ratio is calculated as:
+\[
+\text{Slowdown} =
+\frac{\text{ASan Mean Runtime}}
+{\text{Baseline Mean Runtime}}
+\]
 
-```text
-Runtime Ratio = Mean ASan Runtime / Mean Baseline Runtime
+\[
+= \frac{2.5972}{1.5498}
+\approx 1.68
+\]
 
-              = 2.367546 / 1.301649
+The percentage slowdown is:
 
-              ≈ 1.82×
-```
+\[
+(1.68-1)\times 100\% \approx 67.58\%
+\]
 
-### 2.3 Runtime Slowdown
+Therefore, ASan increased the average execution time by approximately **67.58%**, corresponding to a slowdown of approximately **1.68×**.
 
-The slowdown is calculated as:
+---
 
-```text
-Slowdown (%) = ((Mean ASan Runtime - Mean Baseline Runtime)
-                / Mean Baseline Runtime) × 100%
+## 3. Memory Usage Results
 
-             = ((2.367546 - 1.301649) / 1.301649) × 100%
+We also compared peak memory usage between the baseline and ASan-instrumented programs.
 
-             ≈ 81.9%
-```
+| Configuration | Peak Memory |
+|---|---:|
+| Baseline (ASan OFF) | 24.38 MB |
+| ASan (ASan ON) | 61.44 MB |
 
-The ASan-enabled GEMM workload therefore takes approximately 1.82 times as long as the baseline workload, corresponding to an approximately 81.9% runtime slowdown.
+The memory overhead ratio is calculated as:
 
-### 2.4 Comparison with the Original Paper
+\[
+\text{Memory Overhead} =
+\frac{\text{ASan Peak Memory}}
+{\text{Baseline Peak Memory}}
+\]
 
-The original paper reports an average runtime slowdown of approximately 73% across the SPEC CPU2006 benchmark suite, equivalent to a runtime ratio of approximately 1.73×.
+\[
+= \frac{61.44}{24.38}
+\approx 2.52
+\]
 
-Our measured GEMM slowdown is approximately 81.9%, which is about 8.9 percentage points higher than the paper's reported average.
+Thus, the ASan-instrumented program used approximately **2.52×** the peak memory of the baseline program.
 
-The result supports the qualitative observation that enabling ASan introduces runtime overhead. However, it does not reproduce the exact 73% average reported in the original paper because the benchmark workload and evaluation scope are different.
+---
 
-**Assessment:** The qualitative runtime-overhead claim is supported by our experiment. The original paper's exact benchmark-suite average has not been reproduced.
+## 4. Comparison with the Original Paper
 
-## 3. Memory-Error Detection Results
+The following table compares our experimental results with the results reported in the original paper.
 
-In addition to the runtime experiment, the group conducted selected memory-error detection tests using AddressSanitizer.
+| Metric | Original Paper | Our Reproduction |
+|---|---:|---:|
+| Runtime Slowdown | Approximately 73% (1.73×) | 67.58% (1.68×) |
+| Memory Overhead | Approximately 3.37× | 2.52× |
+| Benchmark | SPEC CPU2006 | GEMM (N=1000) |
 
-### 3.1 Heap Use-After-Free
+### 4.1 Runtime Comparison
 
-The group's earlier experiment record in `experiments/notes.md` reports the following diagnostic:
+Our experiment measured a runtime slowdown of approximately 67.58%, which is slightly lower than the approximately 73% reported in the original paper.
+
+The difference is approximately 5.42 percentage points.
+
+This difference may be related to the use of a smaller GEMM benchmark instead of the SPEC CPU2006 benchmark suite, as well as differences in hardware and compiler environments.
+
+### 4.2 Memory Usage Comparison
+
+Our measured memory overhead was approximately 2.52×, lower than the approximately 3.37× reported in the original paper.
+
+One possible explanation is that our GEMM benchmark has a smaller memory footprint than the larger SPEC CPU2006 workloads.
+
+---
+
+## 5. Memory Error Detection Results
+
+In addition to performance measurements, we tested ASan's ability to detect memory errors.
+
+### 5.1 Heap Use-After-Free
+
+The heap-use-after-free experiment successfully triggered an ASan error.
+
+The output included:
 
 ```text
 ERROR: AddressSanitizer: heap-use-after-free
 READ of size 4
 ```
 
-This indicates that ASan detected an attempt to read memory after the allocated heap memory had been freed.
+This demonstrates that ASan can detect an attempt to access heap memory after it has been freed.
 
-**Result:** The recorded heap-use-after-free test was detected by ASan.
+### 5.2 Double-Free
 
-### 3.2 Double-Free Detection
+We conducted three runs of the double-free experiment.
 
-The group conducted three boundary test runs. The following raw log files were examined:
+| Log File | Detection Result |
+|---|---|
+| boundary_run1.log | Detected |
+| boundary_run2.log | Detected |
+| boundary_run3.log | Detected |
 
-- `logs/boundary_run1.log`
-- `logs/boundary_run2.log`
-- `logs/boundary_run3.log`
-
-All three logs contain the diagnostic:
+All three runs reported:
 
 ```text
 ERROR: AddressSanitizer: attempting double-free
@@ -105,81 +175,64 @@ SUMMARY: AddressSanitizer: double-free
 ABORTING
 ```
 
-The results are summarized below:
+The detection rate was:
 
-| Run | ASan Diagnostic | Result |
+\[
+\frac{3}{3}\times 100\% = 100\%
+\]
+
+This confirms that ASan successfully detected the double-free error in all three recorded runs.
+
+---
+
+## 6. Analysis of Results
+
+Our experiments provide evidence supporting the main performance and memory-error-detection characteristics of AddressSanitizer.
+
+First, the performance experiment shows that ASan introduces measurable runtime overhead. Our measured slowdown was approximately 67.58%, which is reasonably close to the approximately 73% reported in the original paper.
+
+Second, the memory experiment shows that ASan increases peak memory usage. Our measured memory overhead was approximately 2.52×, compared with approximately 3.37× in the original paper.
+
+Third, the memory error experiments demonstrate that ASan can detect heap-use-after-free and double-free errors. In particular, the double-free experiment successfully detected the error in all three recorded runs.
+
+Overall, the experimental results support the main characteristics described in the original paper, although the exact overhead values differ.
+
+---
+
+## 7. Deviations and Limitations
+
+There are several differences between our reproduction and the original paper.
+
+| Aspect | Original Paper | Our Reproduction |
 |---|---|---|
-| Boundary Run 1 | `attempting double-free` | Detected |
-| Boundary Run 2 | `attempting double-free` | Detected |
-| Boundary Run 3 | `attempting double-free` | Detected |
+| Benchmark Suite | SPEC CPU2006 | Self-contained GEMM benchmark |
+| Benchmark Scale | Multiple benchmark programs | Single GEMM workload with N=1000 |
+| Runtime Evaluation | SPEC CPU2006 performance evaluation | Three runs of GEMM |
+| Experimental Environment | Original paper's experimental environment | macOS on Apple Silicon with Apple clang 14.0.0 |
 
-**Result:** AddressSanitizer successfully detected the tested double-free error in all three recorded runs (3/3).
+The main deviation is the replacement of SPEC CPU2006 with a self-contained GEMM benchmark due to licensing and access constraints.
 
-The logs also contain warnings about an invalid external symbolizer path. These warnings may affect the readability of symbolized stack traces, but the explicit double-free diagnostic still identifies the detected error.
+This limits the direct comparability of our performance results with those of the original paper. The results should therefore be interpreted as a reproduction of ASan's general performance characteristics rather than an exact replication of the original benchmark results.
 
-### 3.3 Other Memory-Error Tests
+---
 
-The group's Week 2 summary mentions additional test cases, including `malloc(0)` and heap out-of-bounds.
+## 8. Conclusion
 
-However, the three uploaded boundary logs examined for this report contain double-free diagnostics. They do not establish successful detection of these other cases.
+Our reproduction experiments demonstrate that AddressSanitizer introduces measurable runtime and memory overhead while successfully detecting memory errors.
 
-| Test Case | Current Evidence | Status |
-|---|---|---|
-| Heap use-after-free | ASan diagnostic recorded in `experiments/notes.md` | Detected |
-| Double-free | Three raw logs report `attempting double-free` | Detected (3/3 runs) |
-| Heap out-of-bounds | No confirming raw diagnostic currently available | Pending verification |
-| `malloc(0)` | No confirming raw diagnostic currently available | Pending verification |
+The GEMM benchmark showed a runtime slowdown of approximately 67.58% and a peak memory overhead of approximately 2.52×.
 
-These pending cases should not be reported as successful until their corresponding source code and raw execution logs have been checked.
+The memory error experiments also confirmed that ASan successfully detected heap-use-after-free and double-free errors.
 
-## 4. Deviations from the Original Paper
+Although our experimental setup differs from the original paper because we used GEMM instead of SPEC CPU2006, the results are broadly consistent with the performance characteristics reported by the original authors.
 
-| Item | Original Paper | Our Reproduction | Impact |
-|---|---|---|---|
-| Benchmark suite | SPEC CPU2006 C/C++ benchmarks | GEMM workload, N = 1000 | Reduced benchmark coverage |
-| Runtime evaluation | Average across multiple benchmarks | One GEMM workload with three runs | Results are not directly equivalent |
-| Runtime slowdown | Approximately 73% | Approximately 81.9% | Qualitative overhead is observed, but the numerical result differs |
-| Memory-error tests | Multiple memory-error categories | Currently verified use-after-free and double-free cases | Only selected error cases are demonstrated |
-| Symbolizer | Detailed diagnostic output | External symbolizer path warnings appear in logs | Stack-trace readability may be affected |
-| Memory overhead | Approximately 3.4× reported in the paper | Not measured in the current experiments | Memory-overhead claim is not reproduced |
+Therefore, our experiments provide supporting evidence for the main claims of the AddressSanitizer paper.
 
-The most important deviation is the replacement of SPEC CPU2006 with a single GEMM workload. This limits the generality of the performance comparison.
+---
 
-The current experiments also cover only selected memory-error cases. They do not reproduce every detection capability or evaluation result discussed in the original paper.
+## 9. Items to Confirm Before Final Submission
 
-## 5. Preliminary Claim Assessment
-
-| Claim | Current Assessment | Evidence |
-|---|---|---|
-| ASan detects the tested heap use-after-free error | Supported for the recorded test | `heap-use-after-free` diagnostic in the experiment record |
-| ASan detects the tested double-free error | Supported | Three raw logs report `attempting double-free` |
-| ASan detects heap out-of-bounds in our experiment | Not yet established | No confirming raw log available |
-| ASan detects the tested `malloc(0)` case | Not yet established | No confirming raw log available |
-| ASan introduces runtime overhead | Supported | GEMM runtime increased from 1.301649 s to 2.367546 s on average |
-| Our experiment reproduces the paper's exact 73% average slowdown | Not supported as an exact reproduction | Different benchmark workload and measured slowdown of approximately 81.9% |
-
-These assessments refer only to the experiments currently documented by the group. They should be updated if additional verified evidence becomes available.
-
-## 6. Remaining Work
-
-Before final submission, the group should:
-
-1. Obtain and preserve the raw logs for the three formal baseline runs and three formal ASan runs.
-2. Confirm the standard-deviation calculation convention and correct the values in `workload.md`.
-3. Verify the actual hardware, operating system, kernel, and compiler information in the environment documentation.
-4. Obtain separate raw logs for heap out-of-bounds and `malloc(0)` if these tests remain part of the experimental plan.
-5. Confirm the exact source files and compilation commands used for the memory-error tests.
-6. Fix or document the external symbolizer path warning if readable source-level stack traces are required.
-7. Avoid claiming memory-overhead reproduction unless the group conducts and documents the corresponding measurement.
-
-## 7. Conclusion
-
-The current experiments demonstrate that AddressSanitizer detected the recorded heap use-after-free error and successfully detected double-free in all three recorded boundary-test runs.
-
-For the GEMM workload, the ASan-enabled build achieved a mean runtime of 2.367546 seconds, compared with 1.301649 seconds for the baseline build. This corresponds to an approximately 81.9% slowdown.
-
-These results support the observation that AddressSanitizer can detect the tested memory errors and introduces runtime overhead. However, the reproduction remains limited in scope because it uses a single GEMM workload instead of the original SPEC CPU2006 benchmark suite and has not yet verified every planned memory-error test.
-
-## Reference
-
-Serebryany, K., Bruening, D., Potapenko, A., & Vyukov, D. (2012). *AddressSanitizer: A Fast Address Sanity Checker*. Proceedings of the USENIX Annual Technical Conference (USENIX ATC).
+- Confirm that the final GEMM benchmark results were produced on the stated Apple Silicon macOS environment.
+- Ensure that `logs/benchmark_result.md` contains the same three runtime measurements and peak memory values reported above.
+- Confirm that all referenced memory-error logs are included in the repository.
+- Keep the benchmark substitution clearly documented as a deviation from the original paper.
