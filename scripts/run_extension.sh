@@ -7,7 +7,6 @@ SRC_FILE="$WORK_DIR/malloc.c"
 LOG_DIR="logs"
 RESULT_DIR="results"
 RUNS=3
-
 mkdir -p "$WORK_DIR" "$LOG_DIR" "$RESULT_DIR"
 
 OS_TYPE=$(uname)
@@ -21,11 +20,11 @@ else
     MEM_AWK="{print \$NF}" 
 fi
 
-echo "=== [1/3] Compiling Baseline and ASan ==="
+# Compiling Baseline and ASan
 clang -O2 "$SRC_FILE" -o "$WORK_DIR/demo_baseline"
 clang -O2 -fsanitize=address "$SRC_FILE" -o "$WORK_DIR/demo_asan"
 
-echo "=== [2/3] Running Baseline ($RUNS times) ==="
+# Running Baseline
 BASELINE_TIMES=()
 BASELINE_MEM=()
 for i in $(seq 1 $RUNS); do
@@ -41,7 +40,7 @@ for i in $(seq 1 $RUNS); do
     BASELINE_MEM+=($MEM_VAL)
 done
 
-echo "=== [3/3] Running ASan with redzone=128 ==="
+# Running ASan with redzone=128
 ASAN_128_TIMES=()
 ASAN_128_MEM=()
 for i in $(seq 1 $RUNS); do
@@ -57,7 +56,7 @@ for i in $(seq 1 $RUNS); do
     ASAN_128_MEM+=($MEM_VAL)
 done
 
-echo "=== [4/3] Running ASan with redzone=32 ==="
+# Running ASan with redzone=32
 ASAN_32_TIMES=()
 ASAN_32_MEM=()
 for i in $(seq 1 $RUNS); do
@@ -73,7 +72,7 @@ for i in $(seq 1 $RUNS); do
     ASAN_32_MEM+=($MEM_VAL)
 done
 
-echo "=== Calculating Statistics ==="
+# Calculating Statistics 
 B_STR="${BASELINE_TIMES[*]}"
 A128_STR="${ASAN_128_TIMES[*]}"
 A32_STR="${ASAN_32_TIMES[*]}"
@@ -82,25 +81,25 @@ AM128_STR="${ASAN_128_MEM[*]}"
 AM32_STR="${ASAN_32_MEM[*]}"
 
 STATS=$(echo "$B_STR $A128_STR $A32_STR $BM_STR $AM128_STR $AM32_STR" | awk -v n="$RUNS" '{
-    # 1. Baseline
+    # Baseline
     b_sum = 0; for(i=1; i<=n; i++) { b_sum += $i; }
     b_mean = b_sum / n;
     bm_sum = 0; for(i=3*n+1; i<=4*n; i++) { bm_sum += $i; }
     bm_mean = bm_sum / n;
 
-    # 2. ASan 128B
+    # ASan 128B
     a128_sum = 0; for(i=n+1; i<=2*n; i++) { a128_sum += $i; }
     a128_mean = a128_sum / n;
     am128_sum = 0; for(i=4*n+1; i<=5*n; i++) { am128_sum += $i; }
     am128_mean = am128_sum / n;
 
-    # 3. ASan 32B
+    # ASan 32B
     a32_sum = 0; for(i=2*n+1; i<=3*n; i++) { a32_sum += $i; }
     a32_mean = a32_sum / n;
     am32_sum = 0; for(i=5*n+1; i<=6*n; i++) { am32_sum += $i; }
     am32_mean = am32_sum / n;
 
-    # 计算比例
+    # ratios and slowdowns
     ratio_128 = a128_mean / b_mean;
     slowdown_128 = (ratio_128 - 1) * 100;
     mem_ratio_128 = am128_mean / bm_mean;
@@ -109,13 +108,13 @@ STATS=$(echo "$B_STR $A128_STR $A32_STR $BM_STR $AM128_STR $AM32_STR" | awk -v n
     slowdown_32 = (ratio_32 - 1) * 100;
     mem_ratio_32 = am32_mean / bm_mean;
 
-    printf "--- 128B Redzone (Default) ---\n";
-    printf "Slowdown: %.2f%% (%.2fx)\n", slowdown_128, ratio_128;
-    printf "Memory Ratio: %.2fx\n\n", mem_ratio_128;
+    printf "- **128B Redzone**\n";
+    printf "  - Slowdown: **%.2f%%** (%.2fx)\n", slowdown_128, ratio_128;
+    printf "  - Memory Ratio: **%.2fx**\n\n", mem_ratio_128;
     
-    printf "--- 32B Redzone (Extension) ---\n";
-    printf "Slowdown: %.2f%% (%.2fx)\n", slowdown_32, ratio_32;
-    printf "Memory Ratio: %.2fx\n", mem_ratio_32;
+    printf "- **32B Redzone**\n";
+    printf "  - Slowdown: **%.2f%%** (%.2fx)\n", slowdown_32, ratio_32;
+    printf "  - Memory Ratio: **%.2fx**\n", mem_ratio_32;
 }')
 
 echo "$STATS"
@@ -123,18 +122,18 @@ echo "$STATS"
 RESULT_FILE="$RESULT_DIR/extension_result.md"
 cat << EOF > "$RESULT_FILE"
 # Extension Experiment Result
-**Single Modified Factor:** Heap Redzone Size (128B vs 32B)
+**Single Modified Factor:** Redzone Size (128B vs 32B)
 
 ## Raw Data
-- Baseline Times: ${B_STR}
-- ASan(128B) Times: ${A128_STR}
-- ASan(32B) Times: ${A32_STR}
-- Baseline Peak Mem: ${BM_STR}
+- Baseline Times:      ${B_STR}
+- ASan(128B) Times:    ${A128_STR}
+- ASan(32B) Times:     ${A32_STR}
+- Baseline Peak Mem:   ${BM_STR}
 - ASan(128B) Peak Mem: ${AM128_STR}
-- ASan(32B) Peak Mem: ${AM32_STR}
+- ASan(32B) Peak Mem:  ${AM32_STR}
 
 ## Statistics & Comparison
 $STATS
 EOF
-
-echo "=== Extension Benchmark completed! Results saved to $RESULT_FILE ==="
+echo "----------------------------------------"
+echo "Extension Benchmark completed."

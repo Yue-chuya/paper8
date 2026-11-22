@@ -1,6 +1,9 @@
-#include <stdio.h>
+// Global overflow
+// Section 3.4
 
+#include <stdio.h>
 int global_array[10] = {0}; 
+
 void trigger_global_oob(int index) {
     global_array[index] = 42; 
 }

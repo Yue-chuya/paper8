@@ -1,0 +1,41 @@
+=================================================================
+==28619==ERROR: AddressSanitizer: global-buffer-overflow on address 0x000104664088 at pc 0x00010465fe74 bp 0x00016b7a3720 sp 0x00016b7a3718
+WRITE of size 4 at 0x000104664088 thread T0
+    #0 0x10465fe70 in trigger_global_oob exp_global.c:8
+    #1 0x10465fec0 in main exp_global.c:13
+    #2 0x104699088 in start+0x204 (dyld:arm64e+0x5088)
+
+0x000104664088 is located 0 bytes to the right of global variable 'global_array' defined in 'experiments/bug_tests/exp_global.c:5:5' (0x104664060) of size 40
+SUMMARY: AddressSanitizer: global-buffer-overflow exp_global.c:8 in trigger_global_oob
+Shadow bytes around the buggy address:
+  0x0070208ec7c0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0070208ec7d0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0070208ec7e0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0070208ec7f0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0070208ec800: f9 f9 f9 f9 f9 f9 f9 f9 00 00 00 00 00 00 00 00
+=>0x0070208ec810: 00[f9]f9 f9 f9 f9 f9 f9 00 00 00 00 00 00 00 00
+  0x0070208ec820: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0070208ec830: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0070208ec840: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0070208ec850: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x0070208ec860: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==28619==ABORTING

@@ -1,13 +1,15 @@
+//For run_extension.sh
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #define ITERATIONS 5000000 
 
 volatile int sink;
-
 int main() {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
+    
     for (int i = 0; i < ITERATIONS; i++) {
         int *p = (int*)malloc(16); 
         if (p) { 

@@ -1,6 +1,8 @@
+// Far out-of-bounds access
+// Section 3.5
+
 #include <stdlib.h>
 #include <stdio.h>
-
 volatile int sink;
 int main() {
     char *a = (char*)malloc(64);

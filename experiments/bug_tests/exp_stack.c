@@ -1,5 +1,7 @@
-#include <stdio.h>
+// Stack overflow
+// Section 3.4
 
+#include <stdio.h>
 volatile int sink;
 int main() {
     int stack_array[10];

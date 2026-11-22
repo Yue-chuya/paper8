@@ -1,3 +1,5 @@
+// For run_benchmark.sh
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
