@@ -21,14 +21,14 @@ else
 fi
 
 # Compiling Baseline and ASan
-clang -O2 "$SRC_FILE" -o "$WORK_DIR/demo_baseline"
-clang -O2 -fsanitize=address "$SRC_FILE" -o "$WORK_DIR/demo_asan"
+clang -O2 "$SRC_FILE" -o "$WORK_DIR/demo_baseline_malloc"
+clang -O2 -fsanitize=address "$SRC_FILE" -o "$WORK_DIR/demo_asan_malloc"
 
 # Running Baseline
 BASELINE_TIMES=()
 BASELINE_MEM=()
 for i in $(seq 1 $RUNS); do
-    OUTPUT=$($TIME_CMD "$WORK_DIR/demo_baseline" 2>&1)
+    OUTPUT=$($TIME_CMD "$WORK_DIR/demo_baseline_malloc" 2>&1)
     TIME_VAL=$(echo "$OUTPUT" | head -n 1)
     BASELINE_TIMES+=($TIME_VAL)
     MEM_RAW=$(echo "$OUTPUT" | grep -i "$MEM_GREP" | awk "$MEM_AWK")
@@ -44,7 +44,7 @@ done
 ASAN_128_TIMES=()
 ASAN_128_MEM=()
 for i in $(seq 1 $RUNS); do
-    OUTPUT=$(ASAN_OPTIONS=redzone=128 $TIME_CMD "$WORK_DIR/demo_asan" 2>&1)
+    OUTPUT=$(ASAN_OPTIONS=redzone=128 $TIME_CMD "$WORK_DIR/demo_asan_malloc" 2>&1)
     TIME_VAL=$(echo "$OUTPUT" | head -n 1)
     ASAN_128_TIMES+=($TIME_VAL)
     MEM_RAW=$(echo "$OUTPUT" | grep -i "$MEM_GREP" | awk "$MEM_AWK")
@@ -60,7 +60,7 @@ done
 ASAN_32_TIMES=()
 ASAN_32_MEM=()
 for i in $(seq 1 $RUNS); do
-    OUTPUT=$(ASAN_OPTIONS=redzone=32 $TIME_CMD "$WORK_DIR/demo_asan" 2>&1)
+    OUTPUT=$(ASAN_OPTIONS=redzone=32 $TIME_CMD "$WORK_DIR/demo_asan_malloc" 2>&1)
     TIME_VAL=$(echo "$OUTPUT" | head -n 1)
     ASAN_32_TIMES+=($TIME_VAL)
     MEM_RAW=$(echo "$OUTPUT" | grep -i "$MEM_GREP" | awk "$MEM_AWK")
