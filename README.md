@@ -48,16 +48,16 @@ To reproduce the experiments on a clean machine without hard-coded paths, ensure
 
 - **Supported Platforms**
     1. Linux (Ubuntu 22.04 on WSL2)
-    - Kernel: `6.18.54.1-microsoft-standard-WSL2`
-    - Compiler: clang `21.1.8 (6ubuntu1)`
-    - Build and Shell: GNU Make `4.4.1`, GNU Bash `5.3.9(1)-release`
-    - Hardware: `16 GB` RAM (13th Gen Intel(R) / AMD Ryzen 5 4500U)
+        - Kernel: `6.18.54.1-microsoft-standard-WSL2`
+        - Compiler: clang `21.1.8 (6ubuntu1)`
+        - Build and Shell: GNU Make `4.4.1`, GNU Bash `5.3.9(1)-release`
+        - Hardware: `16 GB` RAM (13th Gen Intel(R) / AMD Ryzen 5 4500U)
     
     2. macOS (Apple Silicon) 
-    - Kernel: `21.6.0 (Darwin)`
-    - Compiler: clang `14.0.0`
-    - Build and Shell: GNU Make `3.81`, GNU Bash `3.2.57(1)-release`
-    - Hardware: `8 GB` RAM (Apple M2)
+        - Kernel: `21.6.0 (Darwin)`
+        - Compiler: clang `14.0.0`
+        - Build and Shell: GNU Make `3.81`, GNU Bash `3.2.57(1)-release`
+        - Hardware: `8 GB` RAM (Apple M2)
 
 - **Python environment (for plotting)**
     - Python 3 with numpy and matplotlib: `pip install numpy matplotlib`
@@ -93,8 +93,8 @@ All commands below assume you are in the repository root directory and use relat
     - `figure/extension/*.png`: mean_time_plot.png, speedup_plot.png, slowdown_plot.png, memory_ratio_plot.png, and peak_memory_plot.png.
 
 - **Verifications**
-    - **Bug tests (`run_bug_tests.sh`)**: Each of the 5 test programs shows **"Bug WAS detected"**.
-    - **False negatives (`run_false_negative.sh`)**: Each of the 3 boundary cases shows **"False Negative achieved"**. Behavior may vary across platforms/environments, so some cases may show **"Caught by ASan"**.
+    - Bug tests (`run_bug_tests.sh`): Each of the 5 test programs shows **"Bug WAS detected"**.
+    - False negatives (`run_false_negative.sh`): Each of the 3 boundary cases shows **"False Negative achieved"**. Behavior may vary across platforms/environments, so some cases may show **"Caught by ASan"**.
 
 - **Results**   
     - **Main Benchmark (Default vs. Paper Params vs. Paper):**
