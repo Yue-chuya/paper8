@@ -3,69 +3,186 @@ import numpy as np
 import re
 import os
 
-MD_FILE = "results/extension_result.md"
-OUTPUT_IMG = "figure/extension_redzone.png"
+MD_PATH = "results/extension_result.md"
+FIG_DIR = "figure/extension"
+os.makedirs(FIG_DIR, exist_ok=True)
 
-def parse_md(filepath):
-    with open(filepath, 'r') as f:
-        text = f.read()
-    
-    b_time_match = re.search(r"- Baseline Times:\s+([\d\. ]+)", text)
-    a128_time_match = re.search(r"- ASan\(128B\) Times:\s+([\d\. ]+)", text)
-    a32_time_match = re.search(r"- ASan\(32B\) Times:\s+([\d\. ]+)", text)
-    
-    b_mem_match = re.search(r"- Baseline Peak Mem:\s+([\d\. ]+)", text)
-    a128_mem_match = re.search(r"- ASan\(128B\) Peak Mem:\s+([\d\. ]+)", text)
-    a32_mem_match = re.search(r"- ASan\(32B\) Peak Mem:\s+([\d\. ]+)", text)
 
-    def to_floats(match_obj):
-        return [float(x) for x in match_obj.group(1).split()]
+def parse_md_table(md_text):
+    match = re.search(r"## Summary Table\s*\n((?:\|.*\|\n)+)", md_text, re.DOTALL)
+    if not match:
+        raise RuntimeError("Cannot find ## Summary Table")
+    table_block = match.group(1)
+    lines = [l.strip() for l in table_block.splitlines() if l.strip()]
 
-    return (to_floats(b_time_match), to_floats(a128_time_match), to_floats(a32_time_match),
-            to_floats(b_mem_match), to_floats(a128_mem_match), to_floats(a32_mem_match))
+    header = None
+    data_rows = []
+    for idx, line in enumerate(lines):
+        cells = [c.strip() for c in line.split("|")[1:-1]]
+        if idx == 0:
+            header = cells
+            continue
+        if all(s.startswith("-") for s in cells):
+            continue
+        data_rows.append(cells)
 
-b_t, a128_t, a32_t, b_m, a128_m, a32_m = parse_md(MD_FILE)
-slow_32 = (np.mean(a32_t) / np.mean(b_t) - 1) * 100
-slow_128 = (np.mean(a128_t) / np.mean(b_t) - 1) * 100
+    col_idx = {name: i for i, name in enumerate(header)}
 
-mem_32 = np.mean(a32_m) / np.mean(b_m)
-mem_128 = np.mean(a128_m) / np.mean(b_m)
+    label_list = []
+    threads_arr = []
+    mean_s_arr = []
+    speedup_arr = []
+    slowdown_arr = []
+    mem_arr = []
+    mem_ratio_arr = []
 
-# draw bar chart
-plt.style.use('default')
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-labels = ['32B', '128B']
-x_pos = np.arange(len(labels))
-colors = ["#1f9bb4", "#ffcc00"] 
+    for row in data_rows:
+        label = row[col_idx["label"]]
+        try:
+            th = int(row[col_idx["threads"]])
+            mean_s = float(row[col_idx["mean_s"]])
+            sp = float(row[col_idx["speedup"]])
 
-# Runtime Impact
-bars1 = ax1.bar(x_pos, [slow_32, slow_128], color=colors, width=0.35)
-ax1.set_ylabel('Slowdown (%)', fontsize=13)
-ax1.set_title('Runtime Impact', fontsize=14,fontweight='bold')
-ax1.set_xticks(x_pos)
-ax1.set_xticklabels(labels, fontsize=11)
-ax1.set_ylim(0, max(slow_32, slow_128) + 10)
-ax1.spines['top'].set_visible(False)
-ax1.spines['right'].set_visible(False)
-ax1.yaxis.grid(True, linestyle='--', alpha=0.6)
-ax1.set_axisbelow(True)
-for i, v in enumerate([slow_32, slow_128]):
-    ax1.text(i, v + 0.5, f'{v:.2f}%', ha='center', fontweight='bold', fontsize=12)
+            mem_str = row[col_idx["peak_mem_mb"]]
+            mem = np.nan if mem_str == "NA" else float(mem_str)
 
-# Memory Impact
-bars2 = ax2.bar(x_pos, [mem_32, mem_128], color=colors, width=0.35)
-ax2.set_ylabel('Memory Ratio (x)', fontsize=13)
-ax2.set_title('Memory Impact', fontsize=14,fontweight='bold')
-ax2.set_xticks(x_pos)
-ax2.set_xticklabels(labels, fontsize=11)
-ax2.set_ylim(0, max(mem_32, mem_128) + 5)
-ax2.spines['top'].set_visible(False)
-ax2.spines['right'].set_visible(False)
-ax2.yaxis.grid(True, linestyle='--', alpha=0.6)
-ax2.set_axisbelow(True)
-for i, v in enumerate([mem_32, mem_128]):
-    ax2.text(i, v + 0.5, f'{v:.2f}x', ha='center', fontweight='bold', fontsize=12)
+            sd_str = row[col_idx["slowdown"]]
+            sd = np.nan if sd_str == "-" else float(sd_str.replace("x", ""))
 
-plt.tight_layout()
-os.makedirs(os.path.dirname(OUTPUT_IMG), exist_ok=True)
-plt.savefig(OUTPUT_IMG, dpi=300, bbox_inches='tight')
+            mr_str = row[col_idx["memory_ratio"]]
+            mr = np.nan if mr_str == "NA" else float(mr_str)
+
+        except ValueError:
+            continue
+
+        label_list.append(label)
+        threads_arr.append(th)
+        mean_s_arr.append(mean_s)
+        speedup_arr.append(sp)
+        slowdown_arr.append(sd)
+        mem_arr.append(mem)
+        mem_ratio_arr.append(mr)
+
+    label_arr = np.array(label_list, dtype=object)
+    threads = np.array(threads_arr)
+    mean_s = np.array(mean_s_arr)
+    speedup = np.array(speedup_arr)
+    slowdown = np.array(slowdown_arr)
+    peak_mem = np.array(mem_arr)
+    memory_ratio = np.array(mem_ratio_arr)
+
+    mask_serial = label_arr == "serial"
+    mask_serial_asan = label_arr == "serial_asan"
+    mask_pt = label_arr == "pthread"
+    mask_pt_asan = label_arr == "pthread_asan"
+
+    return (
+        threads, label_arr, mean_s, speedup, slowdown, peak_mem, memory_ratio,
+        mask_serial, mask_serial_asan, mask_pt, mask_pt_asan
+    )
+
+
+def main():
+    with open(MD_PATH, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    (
+        threads, label_arr, mean_s, speedup, slowdown, peak_mem, memory_ratio,
+        mask_serial, mask_serial_asan, mask_pt, mask_pt_asan
+    ) = parse_md_table(content)
+
+    t_ser = threads[mask_serial]
+    m_ser = mean_s[mask_serial]
+
+    t_ser_asan = threads[mask_serial_asan]
+    m_ser_asan = mean_s[mask_serial_asan]
+
+    t_pt = threads[mask_pt]
+    m_pt = mean_s[mask_pt]
+    sp_pt = speedup[mask_pt]
+    mem_pt = peak_mem[mask_pt]
+
+    t_pt_asan = threads[mask_pt_asan]
+    m_pt_asan = mean_s[mask_pt_asan]
+    sp_pt_asan = speedup[mask_pt_asan]
+    sd_pt_asan = slowdown[mask_pt_asan]
+    mr_pt_asan = memory_ratio[mask_pt_asan]
+    mem_pt_asan = peak_mem[mask_pt_asan]
+
+    plt.rcParams["font.size"] = 11
+    plt.rcParams["figure.dpi"] = 150
+
+    # 1. mean_s 
+    fig1, ax1 = plt.subplots(figsize=(7, 4.4))
+    ax1.plot(t_pt, m_pt, marker="o", linestyle="-", color="#1f77b4", label="pthread")
+    ax1.plot(t_pt_asan, m_pt_asan, marker="s", linestyle="-", color="#ff7f0e", label="pthread_asan")
+    ax1.set_xlabel("Threads")
+    ax1.set_ylabel("Mean Execution Time (s)")
+    ax1.set_title("Mean Time Comparison")
+    all_ticks = np.sort(np.unique(np.concatenate([t_pt, t_pt_asan])))
+    ax1.set_xticks(all_ticks)
+    ax1.legend()
+    ax1.grid(alpha=0.3)
+    fig1.tight_layout()
+    fig1.savefig(os.path.join(FIG_DIR, "mean_time_plot.png"))
+    plt.close(fig1)
+
+    # 2. speedup 
+    fig2, ax2 = plt.subplots(figsize=(7, 4.4))
+    ax2.plot(t_pt, sp_pt, marker="o", color="#1f77b4", label="pthread")
+    ax2.plot(t_pt_asan, sp_pt_asan, marker="s", color="#ff7f0e", label="pthread_asan")
+    ax2.set_xlabel("Threads")
+    ax2.set_ylabel("Speedup")
+    ax2.set_title("Speedup Comparison")
+    ax2.set_xticks(np.sort(np.unique(np.concatenate([t_pt, t_pt_asan]))))
+    ax2.legend()
+    ax2.grid(alpha=0.3)
+    fig2.tight_layout()
+    fig2.savefig(os.path.join(FIG_DIR, "speedup_plot.png"))
+    plt.close(fig2)
+
+    # 3. slowdown 
+    fig3, ax3 = plt.subplots(figsize=(7, 4.4))
+    ax3.plot(t_ser_asan, m_ser_asan, marker="o", linestyle="-", color="#fd0000", label="serial_asan")
+    ax3.plot(t_pt_asan, sd_pt_asan, marker="s", color="#ff7f0e",label="pthread_asan")
+    ax3.set_xlabel("Threads")
+    ax3.set_ylabel("Slowdown Ratio (ASan / Baseline)")
+    ax3.set_title("Pthread_asan Slowdown Ratio")
+    ax3.set_xticks(t_pt_asan)
+    ax3.margins(y=0.2)
+    ax3.legend()
+    ax3.grid(alpha=0.3)
+    fig3.tight_layout()
+    fig3.savefig(os.path.join(FIG_DIR, "slowdown_plot.png"))
+    plt.close(fig3)
+
+    # 4. memory_ratio=
+    fig4, ax4 = plt.subplots(figsize=(7, 4.4))
+    ax4.plot(t_pt_asan, mr_pt_asan, marker="s", color="#ff7f0e")
+    ax4.set_xlabel("Threads")
+    ax4.set_ylabel("Memory Ratio (ASan / Baseline)")
+    ax4.set_title("Pthread_asan Memory Ratio")
+    ax4.set_xticks(t_pt_asan)
+    ax4.margins(y=5.0)
+    ax4.grid(alpha=0.3)
+    fig4.tight_layout()
+    fig4.savefig(os.path.join(FIG_DIR, "memory_ratio_plot.png"))
+    plt.close(fig4)
+
+    # 5. peak memory 
+    fig5, ax5 = plt.subplots(figsize=(7, 4.4))
+    ax5.plot(t_pt, mem_pt, marker="o", linestyle="-", color="#1f77b4", label="pthread")
+    ax5.plot(t_pt_asan, mem_pt_asan, marker="s", linestyle="-", color="#ff7f0e", label="pthread_asan")
+    ax5.set_xlabel("Threads")
+    ax5.set_ylabel("Peak Memory (MB)")
+    ax5.set_title("Peak Memory Comparison")
+    ax5.set_xticks(np.sort(np.unique(np.concatenate([t_pt, t_pt_asan]))))
+    ax5.legend()
+    ax5.grid(alpha=0.3)
+    fig5.tight_layout()
+    fig5.savefig(os.path.join(FIG_DIR, "peak_memory_plot.png"))
+    plt.close(fig5)
+
+
+if __name__ == "__main__":
+    main()

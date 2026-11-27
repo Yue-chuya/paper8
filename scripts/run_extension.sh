@@ -1,13 +1,25 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 cd "$(dirname "$0")/.."
 WORK_DIR="experiments/workload"
-SRC_FILE="$WORK_DIR/malloc.c"
-LOG_DIR="logs"
+SERIAL_SRC="$WORK_DIR/gemm.c"
+PTHREAD_SRC="$WORK_DIR/gemm_thread.c"
 RESULT_DIR="results"
-RUNS=3
-mkdir -p "$WORK_DIR" "$LOG_DIR" "$RESULT_DIR"
+mkdir -p "$WORK_DIR" "$RESULT_DIR"
+
+CC="${CC:-clang}"
+REPS="${REPS:-3}"
+THREADS="${THREADS:-1 2 4 8}"
+BASE_OPT="${BASE_OPT:--O2}"
+ASAN_OPT_FLAGS="${ASAN_OPT_FLAGS:--fsanitize=address -fno-omit-frame-pointer}"
+RESULT="$RESULT_DIR/extension_result.md"
+
+WORK="$(mktemp -d)" 
+trap 'rm -rf "$WORK"' EXIT 
+BINDIR="$WORK/bin"
+ERRF="$WORK/stderr" 
+mkdir -p "$BINDIR"
 
 OS_TYPE=$(uname)
 if [ "$OS_TYPE" == "Darwin" ]; then
@@ -20,120 +32,243 @@ else
     MEM_AWK="{print \$NF}" 
 fi
 
-# Compiling Baseline and ASan
-clang -O2 "$SRC_FILE" -o "$WORK_DIR/demo_baseline_malloc"
-clang -O2 -fsanitize=address "$SRC_FILE" -o "$WORK_DIR/demo_asan_malloc"
+echo "----- Waiting for the results -----"
 
-# Running Baseline
-BASELINE_TIMES=()
-BASELINE_MEM=()
-for i in $(seq 1 $RUNS); do
-    OUTPUT=$($TIME_CMD "$WORK_DIR/demo_baseline_malloc" 2>&1)
-    TIME_VAL=$(echo "$OUTPUT" | head -n 1)
-    BASELINE_TIMES+=($TIME_VAL)
-    MEM_RAW=$(echo "$OUTPUT" | grep -i "$MEM_GREP" | awk "$MEM_AWK")
-    if [ "$OS_TYPE" == "Darwin" ]; then
-        MEM_VAL=$(awk "BEGIN {printf \"%.2f\", $MEM_RAW / 1048576}")
-    else
-        MEM_VAL=$(awk "BEGIN {printf \"%.2f\", $MEM_RAW / 1024}")
-    fi
-    BASELINE_MEM+=($MEM_VAL)
+# compile serial and pthread versions
+if [[ -f "$SERIAL_SRC" ]]; then
+  "$CC" $BASE_OPT -pthread "$SERIAL_SRC" -o "$BINDIR/serial"
+  "$CC" $BASE_OPT -pthread $ASAN_OPT_FLAGS "$SERIAL_SRC" -o "$BINDIR/serial_asan"
+else
+  echo "warning: $SERIAL_SRC not exists, skipping serial compilation"
+fi
+[[ -f "$PTHREAD_SRC" ]] || { echo "error: $PTHREAD_SRC not exists"; exit 1; }
+"$CC" $BASE_OPT -pthread "$PTHREAD_SRC" -o "$BINDIR/pthread"
+"$CC" $BASE_OPT -pthread $ASAN_OPT_FLAGS "$PTHREAD_SRC" -o "$BINDIR/pthread_asan"
+
+# capture data
+run_one() {
+  local bin="$1" th="$2" label="$3" rep="$4" out secs rss mem_mb
+  if ! out=$(GEMM_REPORT_MEM=1 "$bin" "$th" 2>"$ERRF"); then
+    echo "run failed: label=$label threads=$th rep=$rep"
+    printf '%s,%s,%s,NA,NA\n' "$label" "$th" "$rep"
+    return 0
+  fi
+
+  secs=$(printf '%s\n' "$out" | grep -Eo '[0-9]+(\.[0-9]+)?' | head -n1 || true)
+  rss=$(grep -Eo 'maxrss_kb=[0-9]+' "$ERRF" 2>/dev/null | head -n1 | cut -d= -f2 || true)
+  if [[ -n "$rss" ]]; then
+    case "$(uname -s)" in
+      Darwin|*BSD) mem_mb=$(awk -v r="$rss" 'BEGIN { printf "%.2f", r / 1048576 }') ;;
+      *)           mem_mb=$(awk -v r="$rss" 'BEGIN { printf "%.2f", r / 1024 }') ;;
+    esac
+  fi
+  printf '%s,%s,%s,%s,%s\n' "$label" "$th" "$rep" "${secs:-NA}" "${mem_mb:-NA}"
+}
+
+RAW_BLOCK=$(
+{
+echo "label,threads,rep,time_s,peak_mem_mb"
+for rep in $(seq 1 "$REPS"); do
+  [[ -x "$BINDIR/serial" ]]      && run_one "$BINDIR/serial"      1 serial      "$rep"
+  [[ -x "$BINDIR/serial_asan" ]] && run_one "$BINDIR/serial_asan" 1 serial_asan "$rep"
+  for th in $THREADS; do
+    [[ -x "$BINDIR/pthread" ]]      && run_one "$BINDIR/pthread"      "$th" pthread      "$rep"
+    [[ -x "$BINDIR/pthread_asan" ]] && run_one "$BINDIR/pthread_asan" "$th" pthread_asan "$rep"
+  done
 done
+}
+)
 
-# Running ASan with redzone=128
-ASAN_128_TIMES=()
-ASAN_128_MEM=()
-for i in $(seq 1 $RUNS); do
-    OUTPUT=$(ASAN_OPTIONS=redzone=128 $TIME_CMD "$WORK_DIR/demo_asan_malloc" 2>&1)
-    TIME_VAL=$(echo "$OUTPUT" | head -n 1)
-    ASAN_128_TIMES+=($TIME_VAL)
-    MEM_RAW=$(echo "$OUTPUT" | grep -i "$MEM_GREP" | awk "$MEM_AWK")
-    if [ "$OS_TYPE" == "Darwin" ]; then
-        MEM_VAL=$(awk "BEGIN {printf \"%.2f\", $MEM_RAW / 1048576}")
-    else
-        MEM_VAL=$(awk "BEGIN {printf \"%.2f\", $MEM_RAW / 1024}")
-    fi
-    ASAN_128_MEM+=($MEM_VAL)
-done
+SUMMARY_TEXT=$(
+echo "$RAW_BLOCK" | awk -F, '
+NR == 1 { next }
+{
+    if ($4 == "NA") next
+    key = $1 "|" $2
+    if (!(key in n)) { order[++m] = key }
+    n[key]++
+    t[key, n[key]] = $4 + 0
+    if ($5 ~ /^[0-9]+(\.[0-9]+)?$/ && (!(key in mem) || $5 + 0 > mem[key])) {
+        mem[key] = $5 + 0
+    }
+}
+END {
+    for (i = 1; i <= m; i++) {
+        key = order[i]; cnt = n[key]
+        s = 0
+        for (a = 1; a <= cnt; a++) {
+            v[a] = t[key, a]
+            s += v[a]
+        }
+        for (a = 2; a <= cnt; a++) {
+            x = v[a]; b = a - 1
+            while (b >= 1 && v[b] > x) { v[b + 1] = v[b]; b-- }
+            v[b + 1] = x
+        }
+        mins[key] = v[1]
+        means[key] = s / cnt
+        sq = 0
+        for (a = 1; a <= cnt; a++) {
+            d = v[a] - means[key]
+            sq += d * d
+        }
+        stds[key] = (cnt > 1) ? sqrt(sq / (cnt - 1)) : 0
 
-# Running ASan with redzone=32
-ASAN_32_TIMES=()
-ASAN_32_MEM=()
-for i in $(seq 1 $RUNS); do
-    OUTPUT=$(ASAN_OPTIONS=redzone=32 $TIME_CMD "$WORK_DIR/demo_asan_malloc" 2>&1)
-    TIME_VAL=$(echo "$OUTPUT" | head -n 1)
-    ASAN_32_TIMES+=($TIME_VAL)
-    MEM_RAW=$(echo "$OUTPUT" | grep -i "$MEM_GREP" | awk "$MEM_AWK")
-    if [ "$OS_TYPE" == "Darwin" ]; then
-        MEM_VAL=$(awk "BEGIN {printf \"%.2f\", $MEM_RAW / 1048576}")
-    else
-        MEM_VAL=$(awk "BEGIN {printf \"%.2f\", $MEM_RAW / 1024}")
-    fi
-    ASAN_32_MEM+=($MEM_VAL)
-done
+        split(key, kk, "|")
+        lbl = kk[1]; th = kk[2]
+        if(lbl=="pthread" && mem[key]!=""){
+            base_mem[th]=mem[key]
+        }
+    }
+    bn = means["serial|1"];      if (bn == "") bn = means["pthread|1"]
+    ba = means["serial_asan|1"]; if (ba == "") ba = means["pthread_asan|1"]
+    print "label,threads,min_s,mean_s,std_s,peak_mem_mb,memory_ratio,speedup,slowdown"
+    for (i = 1; i <= m; i++) {
+        key = order[i]; split(key, kk, "\\|")
+        lbl = kk[1]; th = kk[2]
+        is_asan = (lbl ~ /asan/)
+        base = is_asan ? ba : bn
+        sp = (base > 0 && means[key] > 0) ? base / means[key] : 0
+        sd = "-"
+        mr = "NA"
+        if (is_asan) {
+            base_lbl = lbl
+            sub(/_asan$/, "", base_lbl)
+            bkey = base_lbl "|" th
+            if ((bkey in means) && means[bkey] > 0) {
+                sd = sprintf("%.2fx", means[key] / means[bkey])
+            }
+       
+            if( th in base_mem && mem[key]!="" ){
+                mr = sprintf("%.2f", mem[key] / base_mem[th])
+            }
+        }
+        printf "%s,%s,%.6f,%.6f,%.6f,%s,%s,%.2f,%s\n",
+               lbl, th, mins[key], means[key], stds[key],
+               (key in mem) ? sprintf("%.2f", mem[key]) : "NA",
+               mr,
+               sp,
+               sd
+    }
+}'
+)
 
-# Calculating Statistics 
-B_STR="${BASELINE_TIMES[*]}"
-A128_STR="${ASAN_128_TIMES[*]}"
-A32_STR="${ASAN_32_TIMES[*]}"
-BM_STR="${BASELINE_MEM[*]}"
-AM128_STR="${ASAN_128_MEM[*]}"
-AM32_STR="${ASAN_32_MEM[*]}"
+SUMMARY_MD_TABLE=$(awk -F',' '
+BEGIN { OFS=" | " }
+NR == 1 {
+    printf "| "
+    for(i=1; i<=NF; i++){
+        if(i>1) printf " | "
+        printf "%s", $i
+    }
+    printf " |\n"
+    printf "| ---"
+    for(i=2; i<=NF; i++){
+        printf " | ---"
+    }
+    printf " |\n"
+    next
+}
+{
+    printf "| "
+    for(i=1; i<=NF; i++){
+        if(i>1) printf " | "
+        printf "%s", $i
+    }
+    printf " |\n"
+}
+' < <(printf "%s\n" "$SUMMARY_TEXT"))
 
-STATS=$(echo "$B_STR $A128_STR $A32_STR $BM_STR $AM128_STR $AM32_STR" | awk -v n="$RUNS" '{
-    # Baseline
-    b_sum = 0; for(i=1; i<=n; i++) { b_sum += $i; }
-    b_mean = b_sum / n;
-    bm_sum = 0; for(i=3*n+1; i<=4*n; i++) { bm_sum += $i; }
-    bm_mean = bm_sum / n;
-
-    # ASan 128B
-    a128_sum = 0; for(i=n+1; i<=2*n; i++) { a128_sum += $i; }
-    a128_mean = a128_sum / n;
-    am128_sum = 0; for(i=4*n+1; i<=5*n; i++) { am128_sum += $i; }
-    am128_mean = am128_sum / n;
-
-    # ASan 32B
-    a32_sum = 0; for(i=2*n+1; i<=3*n; i++) { a32_sum += $i; }
-    a32_mean = a32_sum / n;
-    am32_sum = 0; for(i=5*n+1; i<=6*n; i++) { am32_sum += $i; }
-    am32_mean = am32_sum / n;
-
-    # ratios and slowdowns
-    ratio_128 = a128_mean / b_mean;
-    slowdown_128 = (ratio_128 - 1) * 100;
-    mem_ratio_128 = am128_mean / bm_mean;
-
-    ratio_32 = a32_mean / b_mean;
-    slowdown_32 = (ratio_32 - 1) * 100;
-    mem_ratio_32 = am32_mean / bm_mean;
-
-    printf "- **128B Redzone**\n";
-    printf "  - Slowdown: **%.2f%%** (%.2fx)\n", slowdown_128, ratio_128;
-    printf "  - Memory Ratio: **%.2fx**\n\n", mem_ratio_128;
-    
-    printf "- **32B Redzone**\n";
-    printf "  - Slowdown: **%.2f%%** (%.2fx)\n", slowdown_32, ratio_32;
-    printf "  - Memory Ratio: **%.2fx**\n", mem_ratio_32;
+STATS_BLOCK=$(echo "$RAW_BLOCK" | awk -F, '
+NR == 1 { next }
+{
+    lbl=$1; th=$2; ts=$4; mem=$5
+    if (ts == "NA") next
+    k=lbl"|"th
+    time_arr[k] = time_arr[k] " " ts
+    mem_arr[k] = mem_arr[k] " " mem
+}
+END {
+    split("'"$THREADS"'", thr_list, " ")
+    len = length(thr_list)
+    for (ti=1; ti<=len; ti++) {
+        th = thr_list[ti]
+        base_key = "pthread|" th
+        asan_key = "pthread_asan|" th
+        if (!(base_key in time_arr)) continue
+        n=split(time_arr[base_key], bt, " "); sum_t=0; sumt2=0; maxmem=0
+        for(i=1;i<=n;i++){v=bt[i]+0; sum_t+=v; sumt2+=v*v;}
+        mean_t = sum_t / n
+        std_t = (n>1) ? sqrt((sumt2 - sum_t*sum_t/n)/(n-1)) : 0
+        split(mem_arr[base_key], bm, " "); sum_m=0
+        for(i=1;i<=n;i++){v=bm[i]+0; sum_m+=v; if(v>maxmem) maxmem=v;}
+        mean_m = sum_m / n
+        mean_ta = 0; std_ta =0; mean_ma=0; maxmem_a=0
+        if (asan_key in time_arr) {
+            split(time_arr[asan_key], at, " "); sum_ta=0; sumt2a=0
+            for(i=1;i<=n;i++){v=at[i]+0; sum_ta+=v; sumt2a+=v*v;}
+            mean_ta = sum_ta / n
+            std_ta = (n>1) ? sqrt((sumt2a - sum_ta*sum_ta/n)/(n-1)) : 0
+            split(mem_arr[asan_key], am, " "); sum_ma=0
+            for(i=1;i<=n;i++){v=am[i]+0; sum_ma+=v; if(v>maxmem_a) maxmem_a=v;}
+            mean_ma = sum_ma / n
+        }
+        slowdown = (mean_t>0 && mean_ta>0) ? mean_ta / mean_t : 0
+        mem_ratio = (mean_m>0 && mean_ma>0) ? mean_ma / mean_m : 0
+        print "### Threads = " th
+        print "#### Raw Data"
+        print "- Baseline:           " time_arr[base_key]
+        print "- ASan:               " time_arr[asan_key]
+        print "- Baseline Peak Mem (MB):" mem_arr[base_key]
+        print "- ASan Peak Mem (MB):    " mem_arr[asan_key]
+        print ""
+        print "#### Statistics"
+        printf "- Baseline Mean: %.4f s, Std: %.4f\n", mean_t, std_t
+        printf "- ASan Mean: %.4f s, Std: %.4f\n", mean_ta, std_ta
+        printf "- Ratio: %.2fx\n", slowdown
+        printf "- Slowdown: %.2f%%\n", (slowdown - 1)*100
+        printf "- Baseline Peak Mem Mean: %.2f MB\n", mean_m
+        printf "- ASan Peak Mem Mean: %.2f MB\n", mean_ma
+        printf "- Memory Ratio: %.2fx\n", mem_ratio
+        print ""
+    }
 }')
 
-echo "$STATS"
+MAX_TH="$(printf '%s\n' $THREADS | sort -n | tail -n1)"
+C1="NA"; CN="NA"
+if [[ -x "$BINDIR/pthread" ]]; then
+  C1=$(GEMM_VERIFY=1 "$BINDIR/pthread" 1         2>&1 >/dev/null | grep -o 'checksum=.*' | head -n1 || true)
+  CN=$(GEMM_VERIFY=1 "$BINDIR/pthread" "$MAX_TH" 2>&1 >/dev/null | grep -o 'checksum=.*' | head -n1 || true)
+fi
 
-RESULT_FILE="$RESULT_DIR/extension_result.md"
-cat << EOF > "$RESULT_FILE"
-# Extension Experiment Result
-**Single Modified Factor:** Redzone Size (128B vs 32B)
+val_c1="${C1#*=}"
+val_c1="${val_c1:-NA}"
+val_cn="${CN#*=}"
+val_cn="${val_cn:-NA}"
 
-## Raw Data
-- Baseline Times:      ${B_STR}
-- ASan(128B) Times:    ${A128_STR}
-- ASan(32B) Times:     ${A32_STR}
-- Baseline Peak Mem:   ${BM_STR}
-- ASan(128B) Peak Mem: ${AM128_STR}
-- ASan(32B) Peak Mem:  ${AM32_STR}
+# extension_result.md 
+{
+  echo "# Extension result"
+  echo "$STATS_BLOCK"
+  echo "## Verification"
+  echo "| Item | Value |"
+  echo "| --- | --- |"
+  echo "| checksum pthread (1 thread) | ${val_c1} |"
+  echo "| checksum pthread (${MAX_TH} threads) | ${val_cn} |"
+  if [[ "$C1" != "NA" && "$C1" == "$CN" ]]; then
+    echo "| checksum_match | yes |"
+  else
+    echo "| checksum_match | no |"
+  fi
+  echo "## Summary Table"
+  echo "$SUMMARY_MD_TABLE"
+} > "$RESULT"
 
-## Statistics & Comparison
-$STATS
-EOF
+if command -v column >/dev/null 2>&1; then
+    echo "$SUMMARY_TEXT" | column -s, -t
+else
+    echo "$SUMMARY_TEXT"
+fi
+
 echo "----------------------------------------"
-echo "Extension Benchmark completed."
+echo "Extension completed."
