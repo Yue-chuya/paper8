@@ -4,7 +4,7 @@
 CC = clang
 CFLAGS_BASE = -O2
 CFLAGS_ASAN_BUG = -O0 -fsanitize=address -g
-CFLAGS_ASAN_PERF = -O2 -fsanitize=address
+CFLAGS_ASAN_PERF = -O2 -fsanitize=address -fno-omit-frame-pointer
 
 WORKLOAD_DIR = experiments/workload
 BUG_DIR = experiments/bug_tests
@@ -14,15 +14,15 @@ FN_DIR = experiments/false_negative
 all: workload extension bug_tests false_negatives
 	@echo "Build complete! Run 'make run' to execute all experiments."
 
-# 2. compile benchmark (gemm)。
+# 2. compile benchmark (gemm)
 workload:
 	$(CC) $(CFLAGS_BASE) $(WORKLOAD_DIR)/gemm.c -o $(WORKLOAD_DIR)/demo_baseline
 	$(CC) $(CFLAGS_ASAN_PERF) $(WORKLOAD_DIR)/gemm.c -o $(WORKLOAD_DIR)/demo_asan
 
-# 3. compile Extension (malloc) 
+# 3. compile Extension (gemm_pthread)
 extension:
-	$(CC) $(CFLAGS_BASE) $(WORKLOAD_DIR)/malloc.c -o $(WORKLOAD_DIR)/demo_baseline_malloc
-	$(CC) $(CFLAGS_ASAN_PERF) $(WORKLOAD_DIR)/malloc.c -o $(WORKLOAD_DIR)/demo_asan_malloc
+	$(CC) $(CFLAGS_BASE) -pthread $(WORKLOAD_DIR)/gemm_thread.c -o $(WORKLOAD_DIR)/demo_baseline_thread
+	$(CC) $(CFLAGS_ASAN_PERF) -pthread $(WORKLOAD_DIR)/gemm_thread.c -o $(WORKLOAD_DIR)/demo_asan_thread
 
 # 4. compile Bug tests (-O0)
 bug_tests:
@@ -43,14 +43,14 @@ run: all
 	@echo "---------- Starting all experiments ----------"
 	@echo "----- Running Main Benchmark -----"
 	@bash scripts/run_benchmark.sh
+	@echo "----- Running Paper Parameters -----"
 	@bash scripts/run_paper_params.sh
 	@echo "----- Running Bug Tests -----"
 	@bash scripts/run_bug_tests.sh
-	@echo "----- Running Extension -----"
-	@bash scripts/run_extension.sh
-	@bash scripts/run_extension_bug_tests.sh
 	@echo "----- Running False Negatives -----"
 	@bash scripts/run_false_negative.sh
+	@echo "----- Running Extension -----"
+	@bash scripts/run_extension.sh
 	@echo "----- Generating Figures -----"
 	@python3 scripts/plot_runtime.py
 	@python3 scripts/plot_memory.py
@@ -61,7 +61,8 @@ run: all
 clean:
 	@echo "Cleaning up binaries and debug symbols"
 	rm -f $(WORKLOAD_DIR)/demo_baseline $(WORKLOAD_DIR)/demo_asan 
-	rm -f $(WORKLOAD_DIR)/demo_baseline_malloc $(WORKLOAD_DIR)/demo_asan_malloc
+	rm -f $(WORKLOAD_DIR)/serial $(WORKLOAD_DIR)/serial_asan
+	rm -f $(WORKLOAD_DIR)/demo_baseline_thread $(WORKLOAD_DIR)/demo_asan_thread
 	rm -f $(BUG_DIR)/exp_use_after_free $(BUG_DIR)/exp_heap
 	rm -f $(BUG_DIR)/exp_double_free $(BUG_DIR)/exp_stack $(BUG_DIR)/exp_global
 	rm -f $(FN_DIR)/exp_far_oob $(FN_DIR)/exp_unaligned $(FN_DIR)/exp_uaf_quarantine

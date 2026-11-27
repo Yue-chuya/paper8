@@ -1,7 +1,11 @@
-experiments/demo_asan
 demo_baseline
 demo_asan
-boundary_demo
+
+serial
+serial_asan
+demo_baseline_thread
+demo_asan_thread
+
 exp_heap
 exp_use_after_free
 exp_double_free
@@ -11,7 +15,7 @@ exp_global
 exp_far_oob
 exp_uaf_quarantine
 exp_unaligned
-malloc
+
 *.o
 *.dsYM
 *.core

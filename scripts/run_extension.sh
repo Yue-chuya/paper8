@@ -15,10 +15,10 @@ BASE_OPT="${BASE_OPT:--O2}"
 ASAN_OPT_FLAGS="${ASAN_OPT_FLAGS:--fsanitize=address -fno-omit-frame-pointer}"
 RESULT="$RESULT_DIR/extension_result.md"
 
-WORK="$(mktemp -d)" 
-trap 'rm -rf "$WORK"' EXIT 
-BINDIR="$WORK/bin"
-ERRF="$WORK/stderr" 
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+BINDIR="$WORK_DIR"
+ERRF="$WORK/stderr"
 mkdir -p "$BINDIR"
 
 OS_TYPE=$(uname)
@@ -42,8 +42,8 @@ else
   echo "warning: $SERIAL_SRC not exists, skipping serial compilation"
 fi
 [[ -f "$PTHREAD_SRC" ]] || { echo "error: $PTHREAD_SRC not exists"; exit 1; }
-"$CC" $BASE_OPT -pthread "$PTHREAD_SRC" -o "$BINDIR/pthread"
-"$CC" $BASE_OPT -pthread $ASAN_OPT_FLAGS "$PTHREAD_SRC" -o "$BINDIR/pthread_asan"
+"$CC" $BASE_OPT -pthread "$PTHREAD_SRC" -o "$BINDIR/demo_baseline_thread"
+"$CC" $BASE_OPT -pthread $ASAN_OPT_FLAGS "$PTHREAD_SRC" -o "$BINDIR/demo_asan_thread"
 
 # capture data
 run_one() {
@@ -72,8 +72,8 @@ for rep in $(seq 1 "$REPS"); do
   [[ -x "$BINDIR/serial" ]]      && run_one "$BINDIR/serial"      1 serial      "$rep"
   [[ -x "$BINDIR/serial_asan" ]] && run_one "$BINDIR/serial_asan" 1 serial_asan "$rep"
   for th in $THREADS; do
-    [[ -x "$BINDIR/pthread" ]]      && run_one "$BINDIR/pthread"      "$th" pthread      "$rep"
-    [[ -x "$BINDIR/pthread_asan" ]] && run_one "$BINDIR/pthread_asan" "$th" pthread_asan "$rep"
+    [[ -x "$BINDIR/demo_baseline_thread" ]]      && run_one "$BINDIR/demo_baseline_thread"      "$th" pthread      "$rep"
+    [[ -x "$BINDIR/demo_asan_thread" ]] && run_one "$BINDIR/demo_asan_thread" "$th" pthread_asan "$rep"
   done
 done
 }
@@ -236,9 +236,9 @@ END {
 
 MAX_TH="$(printf '%s\n' $THREADS | sort -n | tail -n1)"
 C1="NA"; CN="NA"
-if [[ -x "$BINDIR/pthread" ]]; then
-  C1=$(GEMM_VERIFY=1 "$BINDIR/pthread" 1         2>&1 >/dev/null | grep -o 'checksum=.*' | head -n1 || true)
-  CN=$(GEMM_VERIFY=1 "$BINDIR/pthread" "$MAX_TH" 2>&1 >/dev/null | grep -o 'checksum=.*' | head -n1 || true)
+if [[ -x "$BINDIR/demo_baseline_thread" ]]; then
+  C1=$(GEMM_VERIFY=1 "$BINDIR/demo_baseline_thread" 1         2>&1 >/dev/null | grep -o 'checksum=.*' | head -n1 || true)
+  CN=$(GEMM_VERIFY=1 "$BINDIR/demo_baseline_thread" "$MAX_TH" 2>&1 >/dev/null | grep -o 'checksum=.*' | head -n1 || true)
 fi
 
 val_c1="${C1#*=}"

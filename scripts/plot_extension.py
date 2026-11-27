@@ -156,7 +156,7 @@ def main():
     fig3.savefig(os.path.join(FIG_DIR, "slowdown_plot.png"))
     plt.close(fig3)
 
-    # 4. memory_ratio=
+    # 4. memory_ratio
     fig4, ax4 = plt.subplots(figsize=(7, 4.4))
     ax4.plot(t_pt_asan, mr_pt_asan, marker="s", color="#ff7f0e")
     ax4.set_xlabel("Threads")
